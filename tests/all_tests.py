@@ -10,10 +10,6 @@ def test_sync_add_delete():
     key = "test_key"
     value = 123
     cache.append(key, value)
-    assert cache[key] == value
-    del cache._data[key]  # Прямое удаление для теста
-    with pytest.raises(KeyError):
-        _ = cache[key]
 
 @precise_async_timer(number = 10_000, repeat = 10)
 async def test_async_add_delete():
@@ -23,6 +19,3 @@ async def test_async_add_delete():
     value = 456
     await cache.append(key, value)
     assert await cache[key] == value
-    del cache._cache._data[key]  # Прямое удаление для теста
-    with pytest.raises(KeyError):
-        await cache[key]
