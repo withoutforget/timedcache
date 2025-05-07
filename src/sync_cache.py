@@ -35,6 +35,15 @@ class TimedCache[T]:
                 return self._data[key]
             del self._data[key]
 
+    def _expire(self):
+        curr = time()
+        for k, v in self._data.items():
+            if v.expire_time <= curr:
+                del self._data[k]
+
+    def _update(self):
+        self._expire()
+
     def __init__(self, default_timeout: float | None = None):
         self._default_timeout = default_timeout
 
@@ -55,3 +64,10 @@ class TimedCache[T]:
 
     def __delitem__(self, key: str):
         del self._data[key]
+
+    def __len__(self) -> int:
+        self._update()
+        return len(self._data)
+
+    def clear(self):
+        self._data.clear()

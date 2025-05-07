@@ -38,4 +38,9 @@ class AsyncTimedCache[T]:
             self._cache[key] = obj
 
     def __delitem__(self, key: str):
-        del self._cache[key]
+        with self._mutex:
+            del self._cache[key]
+
+    def __len__(self):
+        with self._mutex:
+            return len(self._cache)
