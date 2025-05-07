@@ -1,46 +1,40 @@
 from src.sync_cache import TimedCache
-from typing import Optional
+from typing import Optional, Protocol
+from types import TracebackType
 from threading import Lock
+from dataclasses import dataclass, field
 
-
+@dataclass(slots=True)
 class AsyncTimedCache[T]:
     """
     Thread-safe version of timed-cache. Pseudo-async
     """
 
-    _cache: TimedCache[T]
-    _mutex: Lock
+    cache: TimedCache[T] = field(default_factory=TimedCache[T])
+    mutex: Lock = field(default_factory=Lock)
 
-    def __init__(
-        self, mutex: Optional[Lock] = None, cache: TimedCache[T] | None = None
-    ):
-        if mutex is None:
-            mutex = Lock()
-        self._mutex = mutex
-        if cache is None:
-            cache = TimedCache[T]()
-        self._cache = cache
+
 
     async def append(self, key: str, object: T, timeout: float | None = None):
-        with self._mutex:
-            return self._cache.append(key=key, object=object, timeout=timeout)
+        with self.mutex:
+            return self.cache.append(key=key, object=object, timeout=timeout)
 
     async def get(self, key: str) -> T:
-        with self._mutex:
-            return self._cache.get(key)
+        with self.mutex:
+            return self.cache.get(key)
 
     async def __getitem__(self, key: str) -> T:
-        with self._mutex:
-            return self._cache[key]
+        with self.mutex:
+            return self.cache[key]
 
     def __setitem__(self, key: str, obj: T):
-        with self._mutex:
-            self._cache[key] = obj
+        with self.mutex:
+            self.cache[key] = obj
 
     def __delitem__(self, key: str):
-        with self._mutex:
-            del self._cache[key]
+        with self.mutex:
+            del self.cache[key]
 
     def __len__(self):
-        with self._mutex:
-            return len(self._cache)
+        with self.mutex:
+            return len(self.cache)

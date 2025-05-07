@@ -1,14 +1,14 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from time import time
 from typing import Optional
 
 
 @dataclass(slots=True, kw_only=True)
 class TimedCacheObject[T]:
-    object: Optional[T] = None
+    object: T = None
     expire_time: int
 
-
+@dataclass(slots=True)
 class TimedCache[T]:
     """
     A container for expiring object.
@@ -18,34 +18,30 @@ class TimedCache[T]:
     Operator[] returns None, if key doesn't exist / expired.
     """
 
-    _data: dict[str, TimedCacheObject[T]] = dict()
-    _default_timeout: Optional[float] = None
+    _data: dict[str, TimedCacheObject[T]] = field(default_factory=dict)
+    default_timeout: float = 0.5
 
     def _create_tco(self, obj: T, timeout: float | None = None) -> TimedCacheObject[T]:
         if timeout is None:
-            if self._default_timeout is None:
-                raise RuntimeError("No timeout to use")
-            timeout = self._default_timeout
+            timeout = self.default_timeout
         return TimedCacheObject[T](object=obj, expire_time=timeout + time())
-
-    def _get(self, key: str) -> Optional[TimedCacheObject]:
-        if key in self._data:
-            res = self._data[key]
-            if res.expire_time >= time():
-                return self._data[key]
+    
+    def _expire_key(self, key: str):
+        if key in self._data and self._data[key].expire_time <= time():
             del self._data[key]
 
+    def _get(self, key: str) -> TimedCacheObject:
+        self._expire_key(key)
+        if key not in self._data:
+            raise KeyError("Key doesn't exist")
+        return self._data[key]
+
     def _expire(self):
-        curr = time()
-        for k, v in self._data.items():
-            if v.expire_time <= curr:
-                del self._data[k]
+        for k in self._data.keys():
+            self._expire_key(k)
 
     def _update(self):
         self._expire()
-
-    def __init__(self, default_timeout: float | None = None):
-        self._default_timeout = default_timeout
 
     def append(self, key: str, object: T, timeout: float | None = None):
         self._data[key] = self._create_tco(object, timeout)
@@ -56,7 +52,7 @@ class TimedCache[T]:
             raise KeyError("Key is expired")
         return res.object
 
-    def __getitem__(self, key: str) -> Optional[T]:
+    def __getitem__(self, key: str) -> T:
         return self.get(key)
 
     def __setitem__(self, key: str, obj: T):
